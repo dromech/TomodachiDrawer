@@ -12,14 +12,17 @@ namespace TomodachiDrawer.Core
 
         /// <summary>Translate a Colour to the number of button inputs for the Colour picker</summary>
         /// <param name="skColor">Colour to map.</param>
+        /// <param name="useSimplifiedGamma">When true, use a plain gamma=2.2 power curve
+        /// instead of the standard piecewise sRGB curve. Experimental knob for diagnosing
+        /// whether the game uses the simpler conversion.</param>
         /// <returns>Number of button inputs for Hue, Sat and Value.</returns>
-        public static (int HueSteps, int SatSteps, int ValSteps) FromColour(SKColor skColor)
+        public static (int HueSteps, int SatSteps, int ValSteps) FromColour(SKColor skColor, bool useSimplifiedGamma = false)
         {
             // TLDR: The RGB needs to be Linearized from sRGB then turned to HSV.
             // This seemingly is a 1:1 match.
-            float linR = ToLinear(skColor.Red);
-            float linG = ToLinear(skColor.Green);
-            float linB = ToLinear(skColor.Blue);
+            float linR = ToLinear(skColor.Red, useSimplifiedGamma);
+            float linG = ToLinear(skColor.Green, useSimplifiedGamma);
+            float linB = ToLinear(skColor.Blue, useSimplifiedGamma);
 
             LinearRgbToHsv(linR, linG, linB, out float h, out float s, out float v);
 
@@ -47,7 +50,7 @@ namespace TomodachiDrawer.Core
         // you originally tapped. By running the same round-trip on our side we can
         // predict where the picker will actually be on reopen, instead of assuming
         // it stayed where we left it.
-        public static SKColor ToColour((int HueSteps, int SatSteps, int ValSteps) steps)
+        public static SKColor ToColour((int HueSteps, int SatSteps, int ValSteps) steps, bool useSimplifiedGamma = false)
         {
             // Step positions back to continuous HSV (inverse of the rounding done in FromColour).
             float h = (1.0f - (float)steps.HueSteps / (FCR_HUE_SLIDER_STEP_COUNT - 1)) * 360.0f;
@@ -56,25 +59,35 @@ namespace TomodachiDrawer.Core
 
             HsvToLinearRgb(h, s, v, out float linR, out float linG, out float linB);
 
-            return new SKColor(ToSrgb8(linR), ToSrgb8(linG), ToSrgb8(linB), 255);
+            return new SKColor(ToSrgb8(linR, useSimplifiedGamma), ToSrgb8(linG, useSimplifiedGamma), ToSrgb8(linB, useSimplifiedGamma), 255);
         }
 
-        private static float ToLinear(byte srgb8)
+        private static float ToLinear(byte srgb8, bool useSimplifiedGamma = false)
         {
             float c = srgb8 / 255.0f;
+            if (useSimplifiedGamma)
+                return MathF.Pow(c, 2.2f);
             if (c <= 0.04045f)
                 return c / 12.92f;
             return MathF.Pow((c + 0.055f) / 1.055f, 2.4f);
         }
 
         // Inverse of ToLinear - linear-light value back to an 8-bit sRGB byte.
-        private static byte ToSrgb8(float linear)
+        private static byte ToSrgb8(float linear, bool useSimplifiedGamma = false)
         {
             float c;
-            if (linear <= 0.0031308f)
+            if (useSimplifiedGamma)
+            {
+                c = MathF.Pow(Math.Max(linear, 0.0f), 1.0f / 2.2f);
+            }
+            else if (linear <= 0.0031308f)
+            {
                 c = linear * 12.92f;
+            }
             else
+            {
                 c = 1.055f * MathF.Pow(linear, 1.0f / 2.4f) - 0.055f;
+            }
 
             return (byte)Math.Clamp(MathF.Round(c * 255.0f), 0.0f, 255.0f);
         }

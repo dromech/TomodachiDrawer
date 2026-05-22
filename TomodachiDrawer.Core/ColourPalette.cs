@@ -300,6 +300,23 @@ namespace TomodachiDrawer.Core
         private int _lastSatSteps = 0;
         private int _lastValSteps = 0;
 
+        // Experimental colour strategy toggles - set by CanvasDrawer.DrawImage from
+        // the user's settings before the layer loop starts. See DrawImageSettings.
+        private bool _expPreserveHueOnReopen = false;
+        private int _expReanchorEveryNPicks = 0;
+        private bool _expUseSimplifiedGamma = false;
+        private int _arbitraryPicksSinceAnchor = 0;
+
+        // Lets CanvasDrawer push the user's experimental toggles down before drawing
+        // begins. Called once per drawing session, not per colour pick.
+        public void SetExperimentalOptions(bool preserveHueOnReopen, int reanchorEveryNPicks, bool useSimplifiedGamma)
+        {
+            _expPreserveHueOnReopen = preserveHueOnReopen;
+            _expReanchorEveryNPicks = Math.Max(0, reanchorEveryNPicks);
+            _expUseSimplifiedGamma = useSimplifiedGamma;
+            _arbitraryPicksSinceAnchor = 0;
+        }
+
         private PaletteColour? _lastColour = null;
 
         public void SelectColour(PaletteColour target, double speed)
@@ -358,8 +375,19 @@ namespace TomodachiDrawer.Core
                     _hsvHomed = false;
                 }
 
-                // Figure out the steps first off
-                var steps = ColourPickerRouter.FromColour(target.skColor);
+                // Figure out the steps first off. Pass the experimental gamma flag
+                // through - all our HSV<->RGB conversions for this pick need to agree.
+                var steps = ColourPickerRouter.FromColour(target.skColor, _expUseSimplifiedGamma);
+
+                // Periodic re-anchor (Solution C): if enabled, force a fresh slam-home
+                // every N picks to bound any cumulative drift.
+                if (_expReanchorEveryNPicks > 0
+                    && _hsvHomed
+                    && _arbitraryPicksSinceAnchor >= _expReanchorEveryNPicks)
+                {
+                    _hsvHomed = false;
+                    _arbitraryPicksSinceAnchor = 0;
+                }
 
                 if (!_hsvHomed)
                 {
@@ -433,15 +461,21 @@ namespace TomodachiDrawer.Core
                 //  - Every other colour drifts by 0-2 steps from 8-bit RGB rounding.
                 // So we cache the *predicted reopen* position by running the same
                 // HSV -> RGB -> HSV round-trip the game does, not the target position.
-                var storedRgb = ColourPickerRouter.ToColour(steps);
-                var reopenSteps = ColourPickerRouter.FromColour(storedRgb);
-                _lastHueSteps = reopenSteps.HueSteps;
+                var storedRgb = ColourPickerRouter.ToColour(steps, _expUseSimplifiedGamma);
+                var reopenSteps = ColourPickerRouter.FromColour(storedRgb, _expUseSimplifiedGamma);
+
+                // Experimental: when ExpPreserveHueOnReopen is on, keep the target hue
+                // in the cache instead of the round-trip-predicted hue. Tests the
+                // hypothesis that the picker preserves last hue intent across reopen
+                // even when sat/val collapse for blacks and greys.
+                _lastHueSteps = _expPreserveHueOnReopen ? steps.HueSteps : reopenSteps.HueSteps;
                 _lastSatSteps = reopenSteps.SatSteps;
                 _lastValSteps = reopenSteps.ValSteps;
 
                 _realOutput.Tap(Button.A);
                 _realOutput.Delay(400); // wait for ui to close.
                 _lastWasArbitrary = true;
+                _arbitraryPicksSinceAnchor++;
             }
 
             _lastColour = target;

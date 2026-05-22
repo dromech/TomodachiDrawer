@@ -95,6 +95,14 @@ namespace TomodachiDrawer.Core
                 image = ImageDenoiser.DenoiseImage(image, settings.DenoiserName);
             }
 
+            // Push the user's experimental colour-picker toggles into the palette
+            // before any colours get selected.
+            _palette.SetExperimentalOptions(
+                settings.ExpPreserveHueOnReopen,
+                settings.ExpReanchorEveryNPicks,
+                settings.ExpUseSimplifiedGamma
+            );
+
             // Quantized Map is a 2D array of PaletteColours.
             var quantizedMap = _palette.QuantizeImage(image, settings.QuantizerSettings);
 

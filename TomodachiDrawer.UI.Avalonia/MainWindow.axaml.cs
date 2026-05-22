@@ -604,6 +604,9 @@ public partial class MainWindow : Window
                 DisableLargeBrush = false,
                 EnableExperimentalFeatures = enableExperimental,
                 HomeToTopLeft = enableHome,
+                ExpPreserveHueOnReopen = _currentSettings.ExpPreserveHueOnReopen,
+                ExpReanchorEveryNPicks = _currentSettings.ExpReanchorEveryNPicks,
+                ExpUseSimplifiedGamma = _currentSettings.ExpUseSimplifiedGamma,
             };
             await drawer.DrawImage(img, drawSettings);
             AppendLog($"True complete overall time is: {timingSink.TotalTime.TotalSeconds}s");
@@ -708,6 +711,9 @@ public partial class MainWindow : Window
                 TSPTimeLimit = tspLimit,
                 DisableLargeBrush = false,
                 EnableExperimentalFeatures = enableExperimental,
+                ExpPreserveHueOnReopen = _currentSettings.ExpPreserveHueOnReopen,
+                ExpReanchorEveryNPicks = _currentSettings.ExpReanchorEveryNPicks,
+                ExpUseSimplifiedGamma = _currentSettings.ExpUseSimplifiedGamma,
             };
             await drawer.DrawImage(img, drawSettings);
             AppendLog($"True complete overall time is: {timingSink.TotalTime.TotalSeconds}s");
@@ -968,6 +974,16 @@ public partial class MainWindow : Window
         EnableExperimentalCheckBox.IsChecked =
             _currentSettings.EnableExperimentalFeatures;
         CheckForUpdatesCheckBox.IsChecked = _currentSettings.CheckForUpdatesOnStart;
+
+        // Experimental colour-strategy toggles. Re-anchor stores 0 to mean
+        // "disabled", so the checkbox derives from "is the stored N > 0" and the
+        // spinner keeps the value (defaulting to 20 if disabled).
+        ExpPreserveHueCheckBox.IsChecked = _currentSettings.ExpPreserveHueOnReopen;
+        ExpReanchorCheckBox.IsChecked = _currentSettings.ExpReanchorEveryNPicks > 0;
+        ExpReanchorEveryUpDown.Value = _currentSettings.ExpReanchorEveryNPicks > 0
+            ? _currentSettings.ExpReanchorEveryNPicks
+            : 20;
+        ExpSimplifiedGammaCheckBox.IsChecked = _currentSettings.ExpUseSimplifiedGamma;
     }
 
     private void SwitchVersionComboBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -1066,5 +1082,44 @@ public partial class MainWindow : Window
     private void EnableHomeCanvas_IsCheckedChanged(object? sender, RoutedEventArgs e)
     {
         // TODO: Notify if non 256x256 image.
+    }
+
+    // ── Experimental colour-strategy toggles ──────────────────────────
+    // These are diagnostic knobs for figuring out where the residual greenish
+    // drift is coming from on long arbitrary-colour drawings. Each toggle is
+    // independent and persists to settings.json. See DrawImageSettings for what
+    // they actually do during a draw.
+
+    private void ExpPreserveHueCheckBox_IsCheckedChanged(object? sender, RoutedEventArgs e)
+    {
+        _currentSettings.ExpPreserveHueOnReopen = ExpPreserveHueCheckBox.IsChecked ?? false;
+        SaveSettings();
+    }
+
+    private void ExpReanchorCheckBox_IsCheckedChanged(object? sender, RoutedEventArgs e)
+    {
+        // The checkbox is the on/off; the NumericUpDown carries the N. We store 0
+        // in settings to mean "disabled" so a single int captures both states.
+        _currentSettings.ExpReanchorEveryNPicks = (ExpReanchorCheckBox.IsChecked ?? false)
+            ? (int)(ExpReanchorEveryUpDown.Value ?? 20m)
+            : 0;
+        SaveSettings();
+    }
+
+    private void ExpReanchorEveryUpDown_ValueChanged(object? sender, NumericUpDownValueChangedEventArgs e)
+    {
+        // Only push the new N through if the checkbox is on - otherwise we'd flip
+        // re-anchoring on just by editing the spinner.
+        if (ExpReanchorCheckBox.IsChecked == true)
+        {
+            _currentSettings.ExpReanchorEveryNPicks = (int)(ExpReanchorEveryUpDown.Value ?? 20m);
+            SaveSettings();
+        }
+    }
+
+    private void ExpSimplifiedGammaCheckBox_IsCheckedChanged(object? sender, RoutedEventArgs e)
+    {
+        _currentSettings.ExpUseSimplifiedGamma = ExpSimplifiedGammaCheckBox.IsChecked ?? false;
+        SaveSettings();
     }
 }

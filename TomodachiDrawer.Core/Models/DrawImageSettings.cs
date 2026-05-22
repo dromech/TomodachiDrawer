@@ -17,5 +17,19 @@ namespace TomodachiDrawer.Core.Models
         public bool EnableExperimentalFeatures { get; set; } = false;
 
         public bool HomeToTopLeft { get; set; } = false;
+
+        // Experimental colour-picker strategies. Each can be toggled independently
+        // to diagnose residual drift on long arbitrary-colour drawings.
+        //   ExpPreserveHueOnReopen: skip the hue side of the round-trip prediction.
+        //     Tests whether the game preserves the last hue intent across reopen
+        //     even when sat/val collapse for blacks/greys.
+        //   ExpReanchorEveryNPicks (0 disables): force a fresh slam-home every N
+        //     arbitrary picks. Bounds any cumulative drift to N picks worth.
+        //   ExpUseSimplifiedGamma: use the simple gamma=2.2 power curve instead of
+        //     the piecewise sRGB curve. Tests whether the game uses the simpler
+        //     conversion.
+        public bool ExpPreserveHueOnReopen { get; set; } = false;
+        public int ExpReanchorEveryNPicks { get; set; } = 0;
+        public bool ExpUseSimplifiedGamma { get; set; } = false;
     }
 }

@@ -14,6 +14,14 @@ internal class AppSettings
     public bool CheckForUpdatesOnStart { get; set; } = true;
 
     public int FirstStartId { get; set; } = 0;
+
+    // Experimental colour-picker strategies for diagnosing the residual greenish
+    // drift in long arbitrary-colour drawings. Each can be toggled independently
+    // so we can A/B test the underlying hypotheses against a known-good image.
+    // Default off - the existing 5.0 behaviour is what shipped.
+    public bool ExpPreserveHueOnReopen { get; set; } = false;
+    public int ExpReanchorEveryNPicks { get; set; } = 0; // 0 disables
+    public bool ExpUseSimplifiedGamma { get; set; } = false;
 }
 
 // Source gen serialization to avoid trimming warnings.

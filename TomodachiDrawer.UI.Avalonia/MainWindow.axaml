@@ -158,6 +158,38 @@
 								  ToolTip.Tip="At the beginning, the program will zoom out, and set itself at the very very top left of the canvas. This is automatically checked for full size (256x256) images."
 								  IsCheckedChanged="EnableHomeCanvas_IsCheckedChanged"
 						/>
+						<Expander Header="Experimental Colour Strategies"
+								  ToolTip.Tip="Diagnostic toggles for the arbitrary colour picker. Default off matches 5.0 behaviour. Use to A/B test against a known-good drawing.">
+							<StackPanel Spacing="6">
+								<CheckBox x:Name="ExpPreserveHueCheckBox"
+										  Content="Preserve hue across reopen (H1)"
+										  ToolTip.Tip="Skip the hue side of the HSV->RGB->HSV round-trip prediction. Tests whether the picker keeps the last hue intent even when sat/val collapse for black/grey colours."
+										  IsCheckedChanged="ExpPreserveHueCheckBox_IsCheckedChanged"
+								/>
+								<StackPanel Orientation="Horizontal" Spacing="6">
+									<CheckBox x:Name="ExpReanchorCheckBox"
+											  Content="Periodic re-anchor every"
+											  ToolTip.Tip="Force a fresh slam-home every N arbitrary picks. Bounds cumulative drift at the cost of one ~4.25s slam per N picks."
+											  VerticalAlignment="Center"
+											  IsCheckedChanged="ExpReanchorCheckBox_IsCheckedChanged"
+									/>
+									<NumericUpDown x:Name="ExpReanchorEveryUpDown"
+												   Minimum="2" Maximum="200"
+												   Increment="1" Value="20"
+												   FormatString="0"
+												   Width="80"
+												   ValueChanged="ExpReanchorEveryUpDown_ValueChanged"
+									/>
+									<TextBlock Text="picks"
+											   VerticalAlignment="Center" />
+								</StackPanel>
+								<CheckBox x:Name="ExpSimplifiedGammaCheckBox"
+										  Content="Use simplified gamma (γ=2.2)"
+										  ToolTip.Tip="Use a plain gamma=2.2 power curve instead of the standard piecewise sRGB curve in all HSV-to-RGB conversions. Tests whether the game uses the simpler colour-space conversion."
+										  IsCheckedChanged="ExpSimplifiedGammaCheckBox_IsCheckedChanged"
+								/>
+							</StackPanel>
+						</Expander>
 					</StackPanel>
 				</Border>
 				<Border Grid.Row="3" Classes="group" Margin="0,0,0,6">
